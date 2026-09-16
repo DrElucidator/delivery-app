@@ -13,7 +13,7 @@ public sealed class Cliente : EntidadeBase<Cliente>
     {
         Id = id;
         Nome = nome.Trim();
-        Cpf = NormalizarCpf(cpf);
+        Cpf = ValidadorDocumento.Normalizar(cpf);
     }
 
     public override IReadOnlyList<ErroValidacao> Validar()
@@ -28,11 +28,11 @@ public sealed class Cliente : EntidadeBase<Cliente>
             ));
         }
 
-        if (Cpf.Length != 11 || Cpf.Any(c => !char.IsDigit(c)))
+        if (!ValidadorDocumento.CpfValido(Cpf))
         {
             erros.Add(new ErroValidacao(
                 nameof(Cpf),
-                "O CPF deve possuir exatamente 11 dígitos."
+                "O CPF informado é inválido."
             ));
         }
 
@@ -42,13 +42,6 @@ public sealed class Cliente : EntidadeBase<Cliente>
     public override void Atualizar(Cliente entidadeAtualizada)
     {
         Nome = entidadeAtualizada.Nome.Trim();
-        Cpf = NormalizarCpf(entidadeAtualizada.Cpf);
-    }
-
-    private static string NormalizarCpf(string cpf)
-    {
-        return new string(cpf
-            .Where(c => c is not '.' and not '-' && !char.IsWhiteSpace(c))
-            .ToArray());
+        Cpf = ValidadorDocumento.Normalizar(entidadeAtualizada.Cpf);
     }
 }

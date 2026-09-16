@@ -28,7 +28,7 @@ public sealed class PedidosController(IMediator mediator) : ControllerBase
         var resultado = await mediator.Send(
             new CriarPedidoCommand(
                 request.EstabelecimentoId,
-                request.EnderecoEntrega,
+                request.EnderecoId,
                 request.Itens.Select(r => new ItemCriarPedidoCommand(
                     r.ProdutoId,
                     r.Quantidade,

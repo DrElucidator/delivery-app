@@ -126,7 +126,8 @@ public sealed class EstabelecimentosController(IMediator mediator) : ControllerB
             request.Telefone,
             request.AreaAtendimento,
             request.HorarioAbertura,
-            request.HorarioFechamento
+            request.HorarioFechamento,
+            request.TaxaEntrega
         ), cancellationToken);
 
         if (resultado.IsFailed)

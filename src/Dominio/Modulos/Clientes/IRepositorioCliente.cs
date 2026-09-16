@@ -9,4 +9,9 @@ public interface IRepositorioCliente : IRepositorio<Cliente>
         string cpf,
         CancellationToken cancellationToken = default
     );
+    Task<bool> ExisteRegistroComCpfAsync(
+        string cpf,
+        Guid clienteIgnoradoId,
+        CancellationToken cancellationToken = default
+    );
 };

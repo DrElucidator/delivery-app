@@ -53,6 +53,9 @@ API REST em .NET 10 para gerenciamento de clientes, estabelecimentos, cardápios
 | `POST` | `/api/clientes/cadastro`    | Público | Cadastra e autentica um cliente.  |
 | `POST` | `/api/clientes/login`       | Público | Autentica um cliente.             |
 | `GET`  | `/api/clientes/{clienteId}` | Cliente | Consulta um cliente pelo seu ID.  |
+| `PUT`  | `/api/clientes/{clienteId}` | Cliente | Edita os dados do próprio cliente. |
+| `POST` | `/api/clientes/{clienteId}/enderecos` | Cliente | Cadastra um endereço de entrega. |
+| `GET`  | `/api/clientes/{clienteId}/enderecos` | Cliente | Lista os endereços do próprio cliente. |
 
 Os demais endpoints ficam protegidos por uma política global que exige autenticação. Rotas públicas precisam ser marcadas explicitamente com `AllowAnonymous`.
 
@@ -177,6 +180,8 @@ Somente o usuário autenticado do estabelecimento vinculado pode criar, editar, 
 
 O pedido pertence a um cliente e a um estabelecimento. Ele armazena o endereço de entrega, os itens escolhidos, a taxa de entrega, os valores calculados e o histórico das alterações de status.
 
+O endereço utilizado no pedido precisa estar previamente cadastrado e pertencer ao cliente autenticado. A criação recebe o identificador do endereço selecionado e preserva sua descrição no pedido.
+
 Os nomes e preços dos produtos e complementos são copiados para o pedido no momento de sua criação. Dessa forma, alterações posteriores no cardápio não modificam o histórico do pedido.
 
 #### Fluxo de status
@@ -211,6 +216,12 @@ Cada alteração válida gera uma entrada no histórico do pedido, identificando
 A criação e a alteração do status dos pedidos são publicadas no RabbitMQ por meio do MassTransit. Os consumidores processam as mensagens nas filas `pedidos-criados` e `pedidos-atualizados`.
 
 O processamento verifica novamente o usuário, o estabelecimento, os produtos, os complementos e as regras de transição antes de persistir a operação. As mensagens podem ser repetidas sem duplicar a criação ou a alteração já processada, e falhas transitórias utilizam tentativas automáticas de reprocessamento.
+
+#### Carrinho e ocorrências
+
+O carrinho é um estado temporário da aplicação cliente. Inclusões, remoções e alterações de quantidade ocorrem antes da confirmação, e a API recebe somente a composição final do pedido. Não existe uma entidade de carrinho persistida no servidor nesta versão.
+
+Recusas e cancelamentos aceitam um motivo e são registrados no histórico auditável do pedido. Esses registros representam as ocorrências previstas no fluxo principal, sem a necessidade de uma entidade independente.
 
 ## Arquitetura
 
@@ -333,4 +344,10 @@ Para validar a compilação da solução:
 
 ```bash
 dotnet build DeliveryApp.slnx
+```
+
+Para executar os testes automatizados:
+
+```bash
+dotnet test DeliveryApp.slnx
 ```

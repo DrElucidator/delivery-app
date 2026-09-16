@@ -38,7 +38,8 @@ public sealed record EditarEstabelecimentoRequest(
     string Telefone,
     string AreaAtendimento,
     TimeOnly HorarioAbertura,
-    TimeOnly HorarioFechamento
+    TimeOnly HorarioFechamento,
+    decimal TaxaEntrega
 );
 
 public sealed record AutenticarEstabelecimentoRequest(string Email, string Senha);

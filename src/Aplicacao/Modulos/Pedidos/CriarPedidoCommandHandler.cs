@@ -1,6 +1,7 @@
 using DeliveryApp.Aplicacao.Modulos.Pedidos.Mensageria;
 using DeliveryApp.Aplicacao.Modulos.Pedidos.Util;
 using DeliveryApp.Dominio.Compartilhado.Auth;
+using DeliveryApp.Dominio.Modulos.Clientes;
 using DeliveryApp.Dominio.Modulos.Pedidos;
 using FluentResults;
 using MassTransit;
@@ -17,12 +18,13 @@ public sealed record ItemCriarPedidoCommand(
 
 public sealed record CriarPedidoCommand(
     Guid EstabelecimentoId,
-    string EnderecoEntrega,
+    Guid EnderecoId,
     IReadOnlyList<ItemCriarPedidoCommand> Itens
 ) : IRequest<Result<Guid>>;
 
 public sealed class CriarPedidoCommandHandler(
     IProvedorDeUsuario provedorDeUsuario,
+    IRepositorioEnderecoCliente repositorioEndereco,
     IPublishEndpoint publishEndpoint
 ) : IRequestHandler<CriarPedidoCommand, Result<Guid>>
 {
@@ -37,6 +39,18 @@ public sealed class CriarPedidoCommandHandler(
         if (!provedorDeUsuario.PossuiTipo(TipoUsuario.Cliente))
             return Result.Fail<Guid>(ErrosDePedido.NaoAutorizado());
 
+        var endereco = await repositorioEndereco.SelecionarDoClienteAsync(
+            command.EnderecoId,
+            clienteId,
+            cancellationToken
+        );
+
+        if (endereco is null)
+            return Result.Fail<Guid>(ErrosDePedido.Validacao(
+                "O endereço de entrega não foi encontrado para o cliente autenticado.",
+                nameof(command.EnderecoId)
+            ));
+
         var erros = Validar(command);
 
         if (erros.Count > 0)
@@ -50,7 +64,7 @@ public sealed class CriarPedidoCommandHandler(
             pedidoId,
             clienteId,
             command.EstabelecimentoId,
-            command.EnderecoEntrega,
+            endereco.Endereco,
             command.Itens.Select(i => new ItemCriarPedidoMessage(
                 i.ProdutoId,
                 i.Quantidade,
@@ -70,11 +84,8 @@ public sealed class CriarPedidoCommandHandler(
         if (command.EstabelecimentoId == Guid.Empty)
             erros.Add(new(nameof(command.EstabelecimentoId), "O estabelecimento é obrigatório."));
 
-        if (string.IsNullOrWhiteSpace(command.EnderecoEntrega) ||
-            command.EnderecoEntrega.Trim().Length is < Pedido.TamanhoMinimoEndereco or > Pedido.TamanhoMaximoEndereco)
-        {
-            erros.Add(new(nameof(command.EnderecoEntrega), $"O endereço deve possuir entre {Pedido.TamanhoMinimoEndereco} e {Pedido.TamanhoMaximoEndereco} caracteres."));
-        }
+        if (command.EnderecoId == Guid.Empty)
+            erros.Add(new(nameof(command.EnderecoId), "O endereço de entrega é obrigatório."));
 
         if (command.Itens is null || command.Itens.Count == 0)
         {

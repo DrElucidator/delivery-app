@@ -30,7 +30,7 @@ public sealed class Estabelecimento : EntidadeBase<Estabelecimento>
     {
         Id = id;
         NomeComercial = nomeComercial.Trim();
-        Documento = NormalizarStringNumerica(documento);
+        Documento = ValidadorDocumento.Normalizar(documento);
         Endereco = endereco.Trim();
         Telefone = NormalizarStringNumerica(telefone);
         AreaAtendimento = areaAtendimento.Trim();
@@ -57,8 +57,8 @@ public sealed class Estabelecimento : EntidadeBase<Estabelecimento>
         if (NomeComercial.Length is < 2 or > 100)
             erros.Add(new(nameof(NomeComercial), "O nome comercial deve possuir entre 2 e 100 caracteres."));
 
-        if (Documento.Length is not 11 and not 14 || Documento.Any(c => !char.IsDigit(c)))
-            erros.Add(new(nameof(Documento), "O documento deve possuir 11 ou 14 dígitos."));
+        if (!ValidadorDocumento.CpfOuCnpjValido(Documento))
+            erros.Add(new(nameof(Documento), "O CPF ou CNPJ informado é inválido."));
 
         if (Endereco.Length is < 5 or > 250)
             erros.Add(new(nameof(Endereco), "O endereço deve possuir entre 5 e 250 caracteres."));

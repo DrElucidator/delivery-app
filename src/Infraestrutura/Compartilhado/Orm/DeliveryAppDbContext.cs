@@ -18,6 +18,7 @@ public sealed class DeliveryAppDbContext(
     private static readonly Guid TipoUsuarioEstabelecimentoId = new("01a06851-5e71-7ae2-822d-21e2fadcffa4");
 
     public DbSet<Cliente> Clientes => Set<Cliente>();
+    public DbSet<EnderecoCliente> EnderecosCliente => Set<EnderecoCliente>();
     public DbSet<Estabelecimento> Estabelecimentos => Set<Estabelecimento>();
     public DbSet<Categoria> Categorias => Set<Categoria>();
     public DbSet<Produto> Produtos => Set<Produto>();

@@ -25,6 +25,7 @@ public static class DependencyInjection
     {
         services.AddScoped<IGerenciadorDeIdentidade, GerenciadorDeIdentidade>();
         services.AddScoped<IRepositorioCliente, RepositorioClienteEmOrm>();
+        services.AddScoped<IRepositorioEnderecoCliente, RepositorioEnderecoClienteEmOrm>();
         services.AddScoped<IRepositorioEstabelecimento, RepositorioEstabelecimentoEmOrm>();
         services.AddScoped<IRepositorioCategoria, RepositorioCategoriaEmOrm>();
         services.AddScoped<IRepositorioProduto, RepositorioProdutoEmOrm>();

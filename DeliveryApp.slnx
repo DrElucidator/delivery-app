@@ -5,4 +5,7 @@
     <Project Path="src/Dominio/DeliveryApp.Dominio.csproj" />
     <Project Path="src/Infraestrutura/DeliveryApp.Infraestrutura.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DeliveryApp.Testes.Unidade/DeliveryApp.Testes.Unidade.csproj" />
+  </Folder>
 </Solution>

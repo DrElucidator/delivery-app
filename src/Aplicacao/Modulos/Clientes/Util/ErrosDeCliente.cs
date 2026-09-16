@@ -33,6 +33,12 @@ public static class ErrosDeCliente
             .WithMetadata(nameof(TipoErro), TipoErro.Conflito);
     }
 
+    public static Error EnderecoDuplicado()
+    {
+        return new Error("Este endereço já está cadastrado para o cliente.")
+            .WithMetadata(nameof(TipoErro), TipoErro.Conflito);
+    }
+
     public static Error CadastroDuplicado()
     {
         return new Error("Já existe um cliente cadastrado com este email ou CPF.")

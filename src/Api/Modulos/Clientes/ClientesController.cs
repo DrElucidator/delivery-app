@@ -39,6 +39,72 @@ public sealed class ClientesController(
         ));
     }
 
+    [Authorize(Roles = nameof(TipoUsuario.Cliente))]
+    [HttpPut("{clienteId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> Editar(
+        Guid clienteId,
+        EditarClienteRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        var resultado = await mediator.Send(new EditarClienteCommand(
+            clienteId,
+            request.Nome,
+            request.Cpf
+        ), cancellationToken);
+
+        if (resultado.IsFailed)
+            return this.ProblemDetails(resultado);
+
+        return NoContent();
+    }
+
+    [Authorize(Roles = nameof(TipoUsuario.Cliente))]
+    [HttpPost("{clienteId:guid}/enderecos")]
+    [ProducesResponseType<CadastrarEnderecoClienteResponse>(StatusCodes.Status201Created)]
+    public async Task<ActionResult<CadastrarEnderecoClienteResponse>> CadastrarEndereco(
+        Guid clienteId,
+        CadastrarEnderecoClienteRequest request,
+        CancellationToken cancellationToken
+    )
+    {
+        var resultado = await mediator.Send(new CadastrarEnderecoClienteCommand(
+            clienteId,
+            request.Endereco
+        ), cancellationToken);
+
+        if (resultado.IsFailed)
+            return this.ProblemDetails(resultado);
+
+        return CreatedAtAction(
+            nameof(ListarEnderecos),
+            new { clienteId },
+            new CadastrarEnderecoClienteResponse(resultado.Value)
+        );
+    }
+
+    [Authorize(Roles = nameof(TipoUsuario.Cliente))]
+    [HttpGet("{clienteId:guid}/enderecos")]
+    [ProducesResponseType<IReadOnlyList<EnderecoClienteResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyList<EnderecoClienteResponse>>> ListarEnderecos(
+        Guid clienteId,
+        CancellationToken cancellationToken
+    )
+    {
+        var resultado = await mediator.Send(
+            new ListarEnderecosClienteQuery(clienteId),
+            cancellationToken
+        );
+
+        if (resultado.IsFailed)
+            return this.ProblemDetails(resultado);
+
+        return Ok(resultado.Value
+            .Select(e => new EnderecoClienteResponse(e.Id, e.Endereco))
+            .ToList());
+    }
+
     [AllowAnonymous]
     [HttpPost("cadastro")]
     [ProducesResponseType<CadastrarClienteResponse>(StatusCodes.Status201Created)]

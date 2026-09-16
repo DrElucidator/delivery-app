@@ -11,7 +11,7 @@ public sealed record ItemCriarPedidoRequest(
 
 public sealed record CriarPedidoRequest(
     Guid EstabelecimentoId,
-    string EnderecoEntrega,
+    Guid EnderecoId,
     IReadOnlyList<ItemCriarPedidoRequest> Itens
 );
 

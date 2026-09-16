@@ -10,7 +10,7 @@ public sealed class RepositorioClienteEmOrm(
 {
     public async Task<bool> ExistePorIdAsync(Guid clienteId, CancellationToken cancellationToken)
     {
-        return await registros.AnyAsync(r => r.Id == clienteId);
+        return await registros.AnyAsync(r => r.Id == clienteId, cancellationToken);
     }
 
     public async Task<bool> ExisteRegistroComCpfAsync(
@@ -19,5 +19,17 @@ public sealed class RepositorioClienteEmOrm(
     )
     {
         return await registros.AnyAsync(r => r.Cpf == cpf, cancellationToken);
+    }
+
+    public async Task<bool> ExisteRegistroComCpfAsync(
+        string cpf,
+        Guid clienteIgnoradoId,
+        CancellationToken cancellationToken = default
+    )
+    {
+        return await registros.AnyAsync(
+            r => r.Cpf == cpf && r.Id != clienteIgnoradoId,
+            cancellationToken
+        );
     }
 }

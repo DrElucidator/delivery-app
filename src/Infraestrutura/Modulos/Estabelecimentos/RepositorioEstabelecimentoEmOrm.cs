@@ -12,8 +12,13 @@ public sealed class RepositorioEstabelecimentoEmOrm(
         CancellationToken cancellationToken = default
     )
     {
+        TimeOnly horaAtual = TimeOnly.FromDateTime(DateTime.UtcNow);
+
         return registros
-            .Where(estabelecimento => estabelecimento.Ativo)
+            .Where(estabelecimento => estabelecimento.Ativo &&
+                (estabelecimento.HorarioAbertura < estabelecimento.HorarioFechamento
+                    ? horaAtual >= estabelecimento.HorarioAbertura && horaAtual < estabelecimento.HorarioFechamento
+                    : horaAtual >= estabelecimento.HorarioAbertura || horaAtual < estabelecimento.HorarioFechamento))
             .OrderBy(estabelecimento => estabelecimento.NomeComercial)
             .ToListAsync(cancellationToken);
     }

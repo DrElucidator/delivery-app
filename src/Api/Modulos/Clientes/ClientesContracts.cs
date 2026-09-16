@@ -21,3 +21,11 @@ public sealed record AutenticarClienteResponse(
 );
 
 public sealed record ClienteResponse(Guid Id, string Nome, string Cpf, string Email);
+
+public sealed record EditarClienteRequest(string Nome, string Cpf);
+
+public sealed record CadastrarEnderecoClienteRequest(string Endereco);
+
+public sealed record CadastrarEnderecoClienteResponse(Guid EnderecoId);
+
+public sealed record EnderecoClienteResponse(Guid Id, string Endereco);
