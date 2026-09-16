@@ -2,7 +2,20 @@
 
 Desenvolvido durante o curso Fullstack da [Academia do Programador 2026](https://www.academiadoprogramador.net).
 
-API REST em .NET 10 para gerenciamento de clientes, estabelecimentos e cardápios de uma plataforma de pedidos e entregas, com ASP.NET Core Identity, autenticação JWT e persistência em PostgreSQL.
+API REST em .NET 10 para gerenciamento de clientes, estabelecimentos, cardápios e pedidos de uma plataforma de entregas. A aplicação utiliza ASP.NET Core Identity, autenticação JWT, persistência em PostgreSQL e processamento assíncrono de pedidos com RabbitMQ.
+
+## Funcionalidades
+
+- cadastro e autenticação de clientes e estabelecimentos;
+- autorização por perfil e pelo vínculo do usuário autenticado com o recurso;
+- gerenciamento de estabelecimentos, categorias, produtos e complementos;
+- consulta pública do cardápio de estabelecimentos ativos;
+- criação de pedidos com preservação dos nomes e preços praticados no momento da compra;
+- consulta e listagem de pedidos conforme o perfil autenticado;
+- alteração controlada do status do pedido, com registro do histórico de transições;
+- processamento assíncrono e idempotente da criação e da atualização de pedidos;
+- persistência em PostgreSQL por meio do Entity Framework Core;
+- documentação interativa dos endpoints pelo Swagger.
 
 ## Referência funcional
 
@@ -79,6 +92,7 @@ Erros HTTP seguem o formato Problem Details e incluem o `traceId` quando tratado
 | `HorarioFechamento` | Final do período diário de atendimento.                                               |
 | `AreaAtendimento`   | Descrição das regiões atendidas.                                                      |
 | `Ativo`             | Indica se o estabelecimento está disponível para receber novos pedidos.               |
+| `TaxaEntrega`       | Valor cobrado pelo estabelecimento para realizar a entrega.                           |
 
 ### Endpoints de estabelecimentos
 
@@ -159,7 +173,44 @@ O cardápio público só pode ser consultado quando o estabelecimento está ativ
 
 Somente o usuário autenticado do estabelecimento vinculado pode criar, editar, ativar ou desativar categorias e produtos. O vínculo é validado pela role `Estabelecimento` e pelo identificador do usuário autenticado.
 
-O módulo de pedidos ainda não está implementado. Quando ele for criado, deverá copiar o preço do produto e dos complementos no momento da confirmação, preservando o valor histórico do pedido.
+### Módulo de pedidos
+
+O pedido pertence a um cliente e a um estabelecimento. Ele armazena o endereço de entrega, os itens escolhidos, a taxa de entrega, os valores calculados e o histórico das alterações de status.
+
+Os nomes e preços dos produtos e complementos são copiados para o pedido no momento de sua criação. Dessa forma, alterações posteriores no cardápio não modificam o histórico do pedido.
+
+#### Fluxo de status
+
+As alterações possíveis dependem do status atual e do perfil autenticado:
+
+| Ação                 | Perfil permitido  | Transição                               |
+| -------------------- | ----------------- | --------------------------------------- |
+| Aceitar pedido       | Estabelecimento   | `AguardandoAceite` para `EmPreparo`      |
+| Recusar pedido       | Estabelecimento   | `AguardandoAceite` para `Recusado`       |
+| Iniciar entrega      | Estabelecimento   | `EmPreparo` para `EmEntrega`             |
+| Concluir entrega     | Estabelecimento   | `EmEntrega` para `Concluido`             |
+| Cancelar pedido      | Cliente           | `AguardandoAceite` para `Cancelado`      |
+
+Cada alteração válida gera uma entrada no histórico do pedido, identificando o usuário, o perfil, os estados anterior e atual, a data e o motivo quando informado.
+
+#### Endpoints de pedidos
+
+| Método  | Rota                                  | Acesso                  | Descrição                              |
+| ------- | ------------------------------------- | ----------------------- | -------------------------------------- |
+| `POST`  | `/api/pedidos`                        | Cliente                 | Solicita a criação de um pedido.       |
+| `GET`   | `/api/pedidos`                        | Cliente ou Estabelecimento | Lista os pedidos vinculados ao usuário. |
+| `GET`   | `/api/pedidos/{pedidoId}`             | Usuário vinculado       | Consulta os detalhes de um pedido.     |
+| `PATCH` | `/api/pedidos/{pedidoId}/aceite`      | Estabelecimento vinculado | Aceita o pedido.                     |
+| `PATCH` | `/api/pedidos/{pedidoId}/recusa`      | Estabelecimento vinculado | Recusa o pedido.                     |
+| `PATCH` | `/api/pedidos/{pedidoId}/cancelamento` | Cliente vinculado       | Cancela o pedido.                      |
+| `PATCH` | `/api/pedidos/{pedidoId}/inicio-entrega` | Estabelecimento vinculado | Inicia a entrega.                   |
+| `PATCH` | `/api/pedidos/{pedidoId}/conclusao`   | Estabelecimento vinculado | Conclui a entrega.                   |
+
+#### Processamento assíncrono
+
+A criação e a alteração do status dos pedidos são publicadas no RabbitMQ por meio do MassTransit. Os consumidores processam as mensagens nas filas `pedidos-criados` e `pedidos-atualizados`.
+
+O processamento verifica novamente o usuário, o estabelecimento, os produtos, os complementos e as regras de transição antes de persistir a operação. As mensagens podem ser repetidas sem duplicar a criação ou a alteração já processada, e falhas transitórias utilizam tentativas automáticas de reprocessamento.
 
 ## Arquitetura
 
@@ -168,7 +219,7 @@ A solução está dividida em quatro projetos:
 | Projeto                      | Responsabilidade                                                          |
 | ---------------------------- | ------------------------------------------------------------------------- |
 | `DeliveryApp.Dominio`        | Entidades, contratos compartilhados e validações de domínio.              |
-| `DeliveryApp.Aplicacao`      | Serviços de aplicação e tipos compartilhados de resultado.                |
+| `DeliveryApp.Aplicacao`      | Casos de uso, consultas, comandos, mensageria e tipos de resultado.        |
 | `DeliveryApp.Infraestrutura` | EF Core, ASP.NET Core Identity, migrations e acesso ao PostgreSQL.         |
 | `DeliveryApp.WebApi`         | Controllers, autenticação JWT, Problem Details, OpenAPI e observabilidade. |
 
@@ -190,6 +241,8 @@ O módulo de cardápio utiliza as tabelas `TBCategorias`, `TBProdutos` e `TBComp
 - autenticação JWT Bearer;
 - Entity Framework Core 10;
 - PostgreSQL com Npgsql;
+- MediatR para comandos e consultas;
+- MassTransit com RabbitMQ para mensageria;
 - FluentResults;
 - Serilog com saídas para console e arquivo;
 - Swagger/OpenAPI.
@@ -198,6 +251,7 @@ O módulo de cardápio utiliza as tabelas `TBCategorias`, `TBProdutos` e `TBComp
 
 - [.NET 10 SDK](https://dotnet.microsoft.com/download/dotnet/10.0);
 - PostgreSQL;
+- RabbitMQ;
 - [EF Core CLI](https://learn.microsoft.com/ef/core/cli/dotnet), somente para gerenciar migrations manualmente.
 
 Para instalar a CLI do EF Core:
@@ -218,6 +272,18 @@ Altere-a conforme o seu ambiente ou sobrescreva-a com o Secret Manager:
 
 ```bash
 dotnet user-secrets set "ConnectionStrings:PostgresEF" "Host=localhost;Port=5432;Database=DeliveryAppDb;Username=postgres;Password=sua-senha" --project src/Api
+```
+
+A conexão local padrão do RabbitMQ também é definida em `src/Api/appsettings.Development.json`:
+
+```text
+amqp://guest:guest@localhost:5672
+```
+
+Ela pode ser sobrescrita sem alterar arquivos versionados:
+
+```bash
+dotnet user-secrets set "ConnectionStrings:RabbitMq" "amqp://usuario:senha@localhost:5672" --project src/Api
 ```
 
 A chave de assinatura do JWT não é armazenada no repositório e precisa ser configurada:
@@ -248,6 +314,8 @@ No ambiente `Development`, as migrations são aplicadas automaticamente na inici
 - `https://localhost:7094`;
 - `http://localhost:5033`;
 - Swagger UI em `/swagger`.
+
+O PostgreSQL e o RabbitMQ precisam estar acessíveis antes da inicialização. Quando o RabbitMQ possui o plugin de gerenciamento habilitado, seu painel administrativo fica disponível por padrão em `http://localhost:15672`.
 
 Para atualizar o banco manualmente:
 
